@@ -1,0 +1,58 @@
+pid /tmp/nginx.pid;
+worker_processes auto;
+
+events {
+    worker_connections 1024;
+    multi_accept on;
+}
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    # Performance & Privacy
+    server_tokens off;
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    keepalive_timeout 65;
+    types_hash_max_size 2048;
+
+    # Logging (Optional: Turn off access logs for privacy/perf if not needed)
+    access_log /dev/stdout;
+    error_log /dev/stderr warn;
+
+    server {
+        listen 8080;
+        listen [::]:8080;
+        server_name ipv6gen.net;
+        root /usr/share/nginx/html;
+        index index.html;
+
+        # Security Headers
+        add_header X-Frame-Options "DENY" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "no-referrer" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api64.ipify.org; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; block-all-mixed-content; upgrade-insecure-requests;" always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), interest-cohort=(), payment=()" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+
+        # Restrict Methods (Only allow GET/HEAD)
+        if ($request_method !~ ^(GET|HEAD)$ ) {
+            return 405;
+        }
+
+        # Deny hidden files
+        location ~ /\. {
+            deny all;
+            access_log off;
+            log_not_found off;
+        }
+
+        location / {
+            try_files $uri $uri/ =404;
+            expires 1h;
+            add_header Cache-Control "public, no-transform";
+        }
+    }
+}

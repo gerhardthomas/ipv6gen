@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPv6Gen.net | Vanity Address Forge</title>
+    <meta name="description" content="Generate valid vanity IPv6 addresses with hexspeak, PTR calculation, and binary visualization.">
+    <meta name="keywords" content="ipv6 generator, vanity ipv6, hexspeak, ip6.arpa, subnet calculator, network tools">
+    <link rel="canonical" href="https://ipv6gen.net/">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>v6</text></svg>">
+    
+    <!-- Security Headers -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api64.ipify.org; object-src 'none'; base-uri 'self';">
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+    <meta name="referrer" content="no-referrer">
+
+    <style>
+        :root {
+            /* Dark Theme (Default) */
+            --bg: #0d1117; --card-bg: rgba(22, 27, 34, 0.95);
+            --text: #c9d1d9; --sub-text: #8b949e;
+            --primary: #00ff41; --primary-dim: #008f11;
+            --accent: #58a6ff; --err: #ff7b72; --warn: #d29922;
+            --border: #30363d;
+            --font: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', monospace;
+            --matrix-color: #0f0; --matrix-bg: rgba(13, 17, 23, 0.05);
+        }
+        
+        [data-theme="light"] {
+            /* Light Theme */
+            --bg: #f6f8fa; --card-bg: rgba(255, 255, 255, 0.95);
+            --text: #24292f; --sub-text: #57606a;
+            --primary: #1a7f37; --primary-dim: #2da44e;
+            --accent: #0969da; --err: #cf222e; --warn: #9a6700;
+            --border: #d0d7de;
+            --matrix-color: #0969da; --matrix-bg: rgba(255, 255, 255, 0.1);
+        }
+
+        * { box-sizing: border-box; transition: background-color 0.3s, border-color 0.3s; }
+        body { background: var(--bg); color: var(--text); font-family: var(--font); margin: 0; padding: 20px; min-height: 100vh; display: flex; flex-direction: column; align-items: center; overflow-x: hidden; }
+        
+        #matrix { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; opacity: 0.05; pointer-events: none; }
+        .container { max-width: 850px; width: 100%; z-index: 1; display: grid; gap: 1.5rem; }
+        
+        header { text-align: center; border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; position: relative; }
+        h1 { color: var(--primary); margin: 0; letter-spacing: 2px; text-transform: uppercase; font-size: 2rem; }
+        
+        /* Theme Toggle */
+        .theme-btn { position: absolute; right: 0; top: 0; background: none; border: 1px solid var(--border); border-radius: 4px; padding: 5px 10px; cursor: pointer; color: var(--sub-text); font-size: 1rem; }
+        .theme-btn:hover { color: var(--primary); border-color: var(--primary); }
+
+        .panel { background: var(--card-bg); border: 1px solid var(--border); border-radius: 6px; padding: 1.5rem; backdrop-filter: blur(5px); }
+        
+        /* Inputs */
+        .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+        label { font-size: 0.75rem; color: var(--accent); text-transform: uppercase; display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        
+        .input-wrapper { position: relative; }
+        input[type="text"] {
+            background: var(--bg); border: 1px solid var(--border); color: var(--primary);
+            font-family: var(--font); font-size: 1.2rem; padding: 0.8rem; border-radius: 4px; width: 100%; outline: none; transition: all 0.2s;
+        }
+        input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,255,65,0.1); }
+        input.invalid { border-color: var(--err); }
+
+        /* Power Actions */
+        .btn-action { 
+            position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+            font-size: 0.65rem; padding: 4px 8px; background: var(--border); color: var(--text);
+            border: none; border-radius: 4px; cursor: pointer; opacity: 0.8;
+        }
+        .btn-action:hover { opacity: 1; background: var(--accent); color: white; }
+
+        /* Chips */
+        .chips { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+        .chip { border: 1px solid var(--border); color: var(--sub-text); font-size: 0.7rem; padding: 2px 8px; border-radius: 12px; cursor: pointer; user-select: none; }
+        .chip:hover { color: var(--primary); border-color: var(--primary); background: rgba(0,255,65,0.05); }
+
+        /* Results */
+        .card { cursor: pointer; position: relative; transition: transform 0.2s, box-shadow 0.2s; }
+        .card:hover { border-color: var(--primary-dim); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        
+        .card-head { font-size: 0.75rem; color: var(--sub-text); margin-bottom: 0.5rem; display: flex; justify-content: space-between; }
+        .addr { font-size: 1.3rem; word-break: break-all; font-weight: 500; margin-bottom: 0.5rem; }
+        
+        .pfx-part { opacity: 0.5; margin-right: 2px; }
+        .sfx-part { color: var(--primary); font-weight: bold; }
+        .sfx-part.overflow { color: var(--err); text-decoration: underline wavy; }
+        
+        .val { color: var(--primary); }
+        .err { color: var(--err); text-decoration: underline wavy; }
+        .sep { color: var(--accent); opacity: 0.6; }
+        .creative { color: var(--accent); text-decoration: underline dotted; }
+
+        /* Tools */
+        .tools { display: flex; gap: 10px; margin-top: 10px; opacity: 0; transition: opacity 0.2s; font-size: 0.75rem; }
+        .card:hover .tools, .tools.mobile { opacity: 1; }
+        
+        .btn-sm { background: var(--bg); border: 1px solid var(--border); color: var(--sub-text); padding: 4px 10px; border-radius: 4px; cursor: pointer; }
+        .btn-sm:hover { color: var(--accent); border-color: var(--accent); }
+        
+        .bin-viz { font-size: 0.65rem; color: var(--sub-text); margin-top: 8px; opacity: 0.7; font-family: monospace; display: none; }
+        .card:hover .bin-viz, .bin-viz.mobile { display: block; }
+
+        /* Suggestions */
+        .suggestions { display: none; background: var(--bg); border: 1px dashed var(--warn); padding: 1rem; border-radius: 6px; }
+        .sugg-item { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
+        .sugg-item:hover .sugg-val { color: var(--primary); }
+        .sugg-val { font-size: 0.9rem; color: var(--text); }
+        .sugg-lbl { font-size: 0.75rem; color: var(--sub-text); }
+
+        /* Toggles */
+        .switch { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.75rem; color: var(--sub-text); }
+        .switch input { display: none; }
+        .slider { width: 32px; height: 18px; background: var(--border); border-radius: 20px; position: relative; transition: 0.3s; }
+        .slider::before { content: ""; position: absolute; height: 14px; width: 14px; left: 2px; bottom: 2px; background: var(--bg); border-radius: 50%; transition: 0.3s; }
+        input:checked + .slider { background: var(--primary); }
+        input:checked + .slider::before { transform: translateX(14px); }
+
+        /* Misc */
+        .shortcuts { position: fixed; bottom: 10px; right: 10px; font-size: 0.7rem; color: var(--sub-text); background: var(--card-bg); padding: 5px 10px; border-radius: 4px; border: 1px solid var(--border); pointer-events: none; }
+        .key { border: 1px solid var(--sub-text); padding: 0 4px; border-radius: 2px; margin: 0 2px; font-weight: bold; }
+        
+        .hint { font-size: 0.8rem; color: var(--sub-text); margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 1rem; line-height: 1.6; }
+        
+        #toast { 
+            visibility: hidden; position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); 
+            background: var(--card-bg); color: var(--primary); border: 1px solid var(--primary); 
+            padding: 12px 24px; border-radius: 4px; z-index: 100;
+        }
+        #toast.show { visibility: visible; animation: fadein 0.3s, fadeout 0.5s 2.5s; }
+        @keyframes fadein { from { bottom: 0; opacity: 0; } to { bottom: 30px; opacity: 1; } }
+        @keyframes fadeout { from { opacity: 1; } to { opacity: 0; } }
+
+        @media (max-width: 600px) { h1 { font-size: 1.5rem; } .shortcuts { display: none; } }
+    </style>
+</head>
+<body>
+    <canvas id="matrix"></canvas>
+    <div class="container">
+        <header>
+            <button class="theme-btn" onclick="toggleTheme()" title="Toggle Theme">☀/☾</button>
+            <h1>IPv6Gen.net</h1>
+            <div style="color:var(--sub-text); font-size:0.9rem;">Advanced Vanity Address Forge</div>
+        </header>
+
+        <div class="panel controls">
+            <div>
+                <label>Prefix <span style="opacity:0.5">/64</span></label>
+                <div class="input-wrapper">
+                    <input type="text" id="prefix" value="2001:db8" spellcheck="false" placeholder="2001:db8">
+                    <button class="btn-action" onclick="detectIP()" title="Scan local network prefix">Detect My /64</button>
+                </div>
+            </div>
+            <div>
+                <label>
+                    Phrase
+                    <label class="switch" title="Allow phonetic matches (h=11, k=c)">
+                        <input type="checkbox" id="creativeMode">
+                        <span class="slider"></span> Creative
+                    </label>
+                </label>
+                <input type="text" id="input" placeholder="dead beef cafe" maxlength="32" autofocus spellcheck="false">
+                <div class="chips">
+                    <span class="chip" onclick="setInput('coffee')">coffee</span>
+                    <span class="chip" onclick="setInput('feed face')">feed face</span>
+                    <span class="chip" onclick="setInput('bad code')">bad code</span>
+                    <span class="chip" onclick="setInput('fe80')">fe80::</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="results" style="display:grid; gap:1rem;"></div>
+
+        <div class="suggestions" id="suggBox">
+            <h4 style="margin:0 0 10px; color:var(--warn); font-size:0.8rem; text-transform:uppercase;">Hacker Suggestions</h4>
+            <div id="suggList"></div>
+        </div>
+
+        <div class="panel" style="font-size:0.8rem; color:var(--sub-text); line-height:1.6;">
+            <strong>Pro Tip:</strong> Most IPv6 subnets are <code>/64</code>. This tool generates the interface ID (host portion). 
+            Text > 16 characters will overflow a single subnet.
+            <br>
+            <strong>Matrix Background:</strong> Animated bitstream matches your theme. Pauses when tab is hidden.
+        </div>
+        <footer style="text-align:center; font-size:0.75rem; color:var(--sub-text);">&copy; 2026 IPv6Gen.net</footer>
+    </div>
+
+    <div class="shortcuts">
+        <span class="key">/</span> focus <span class="key">Esc</span> clear <span class="key">m</span> mode
+    </div>
+    <div id="toast">Copied!</div>
+
+<script>
+    // --- Config ---
+    const LOGIC = {
+        leet: { 'o':'0', 'i':'1', 'l':'1', 'z':'2', 'r':'2', 'e':'3', 'a':'4', 's':'5', 'g':'6', 'b':'8', 't':'7', 'q':'9' },
+        creative: { 'h':'11', 'j':'1', 'k':'c', 'm':'aa', 'n':'17', 'p':'9', 'u':'c', 'v':'c', 'w':'33', 'x':'8', 'y':'7' },
+        synonyms: { 'kill':'dead', 'die':'dead', 'eat':'feed', 'drink':'cafe', 'code':'c0de', 'hack':'hax', 'cool':'c00l', 'king':'ace', 'fail':'bad' }
+    };
+
+    const ui = { 
+        pfx: document.getElementById('prefix'), inp: document.getElementById('input'), 
+        res: document.getElementById('results'), mode: document.getElementById('creativeMode'),
+        sugg: document.getElementById('suggBox'), suggList: document.getElementById('suggList')
+    };
+
+    let theme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+
+    // --- Helpers ---
+    const escape = s => s ? s.toString().replace(/[&<>"']/g, "") : "";
+    const toHex = s => s.split('').map(c => c.charCodeAt(0).toString(16)).join('');
+    const toBin = hex => hex.replace(/:/g,'').split('').map(c => parseInt(c,16).toString(2).padStart(4,'0')).join(' ');
+    const formatChunks = raw => raw ? (raw.match(/.{1,4}/g) || [raw]).join(':') : "";
+
+    // --- Actions ---
+    window.detectIP = async () => {
+        const btn = document.querySelector('.btn-action');
+        btn.innerText = "Scanning...";
+        try {
+            const r = await fetch('https://api64.ipify.org?format=json');
+            const d = await r.json();
+            const parts = d.ip.split(':');
+            if (parts.length >= 4) {
+                ui.pfx.value = parts.slice(0,4).join(':');
+                render();
+                btn.innerText = "Locked!";
+            } else throw "IPv4 detected";
+        } catch (e) {
+            btn.innerText = "No IPv6";
+            setTimeout(() => btn.innerText = "Detect My /64", 2000);
+        }
+    };
+
+    function transform(text, creative) {
+        let out = [], raw = "", valid = true;
+        for (let char of text.toLowerCase()) {
+            if (/[0-9a-f]/.test(char)) { out.push({c:char, t:'val'}); raw+=char; }
+            else if (char === ' ') { out.push({c:':', t:'sep'}); raw+=':'; }
+            else if (LOGIC.leet[char]) { out.push({c:LOGIC.leet[char], t:'val'}); raw+=LOGIC.leet[char]; }
+            else if (creative && LOGIC.creative[char]) { out.push({c:LOGIC.creative[char], t:'creative'}); raw+=LOGIC.creative[char]; }
+            else { out.push({c:char, t:'err'}); valid = false; }
+        }
+        return { html: out.map(o => `<span class="${o.t}">${escape(o.c)}</span>`).join(''), raw, valid };
+    }
+
+    function render() {
+        const txt = ui.inp.value;
+        let pfx = ui.pfx.value.replace(/[^0-9a-fA-F:]/g, '').replace(/:+$/, '') || '2001:db8';
+        
+        const isPfxValid = /^[0-9a-fA-F:]+$/.test(ui.pfx.value);
+        ui.pfx.classList.toggle('invalid', !isPfxValid && ui.pfx.value.length > 0);
+
+        const variants = [];
+        const leet = transform(txt, ui.mode.checked);
+        if(txt) variants.push({ label: 'Hexspeak', html: leet.html, raw: formatChunks(leet.raw), valid: leet.valid });
+        if(txt) variants.push({ label: 'ASCII Bytes', html: `<span class="val">${formatChunks(toHex(txt))}</span>`, raw: formatChunks(toHex(txt)), valid: true });
+
+        const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+
+        ui.res.innerHTML = variants.map(v => {
+            const full = `${pfx}::${v.raw}`;
+            const isOverflow = v.raw.replace(/:/g,'').length > 16;
+            return `
+            <div class="panel card" onclick="copy('${full}')">
+                <div class="card-head">
+                    <span>${v.label}</span>
+                    ${isOverflow ? '<span style="color:var(--err)">Overflow (>64-bit)</span>' : ''}
+                    ${!v.valid ? '<span style="color:var(--err)">Invalid</span>' : ''}
+                </div>
+                <div class="addr">
+                    <span class="pfx-part">${escape(pfx)}::</span>${v.html || '<span style="opacity:0.3">vanity</span>'}
+                </div>
+                <div class="bin-viz ${isTouch?'mobile':''}">${v.raw ? 'Bits: ' + toBin(v.raw).substring(0,40) + '...' : ''}</div>
+                <div class="tools ${isTouch?'mobile':''}">
+                    <button class="btn-sm" onclick="event.stopPropagation(); copy('${full}')">Copy</button>
+                    <button class="btn-sm" onclick="event.stopPropagation(); copy('${v.raw.replace(/:/g,'').split('').reverse().join('.')}.ip6.arpa')">PTR</button>
+                </div>
+            </div>`;
+        }).join('') || '<div style="text-align:center; color:var(--sub-text); padding:2rem;">Waiting for transmission...</div>';
+
+        // Suggestions
+        ui.suggList.innerHTML = '';
+        let hasSugg = false;
+        txt.toLowerCase().split(' ').forEach(w => {
+            if(LOGIC.synonyms[w]) {
+                addSuggestion(`Slang: "${w}" -> "${LOGIC.synonyms[w]}"`, LOGIC.synonyms[w], pfx);
+                hasSugg = true;
+            }
+        });
+        if(!leet.valid && !ui.mode.checked && transform(txt, true).valid) {
+            addSuggestion("Creative Mode fixes this", transform(txt, true).raw, pfx);
+            hasSugg = true;
+        }
+        ui.sugg.style.display = hasSugg ? 'block' : 'none';
+
+        // URL
+        const p = new URLSearchParams();
+        if(pfx !== '2001:db8') p.set('pfx', pfx);
+        if(txt) p.set('txt', txt);
+        if(ui.mode.checked) p.set('c', '1');
+        window.history.replaceState({}, '', window.location.pathname + (p.toString() ? '?' + p.toString() : ''));
+    }
+
+    function addSuggestion(lbl, rawSuffix, pfx) {
+        const val = `${pfx}::${formatChunks(rawSuffix)}`;
+        const div = document.createElement('div');
+        div.className = 'sugg-item';
+        div.onclick = () => copy(val);
+        div.innerHTML = `<span class="sugg-val">${escape(val)}</span> <span class="sugg-lbl">${escape(lbl)}</span>`;
+        ui.suggList.appendChild(div);
+    }
+
+    window.setInput = (v) => { 
+        if(v === 'fe80') { ui.pfx.value = 'fe80'; ui.inp.value = ''; }
+        else ui.inp.value = v; 
+        render(); 
+    };
+    
+    window.copy = (v) => {
+        if(!v || v.includes('vanity')) return;
+        navigator.clipboard.writeText(v).then(() => {
+            const t = document.getElementById('toast');
+            t.className = 'show'; setTimeout(() => t.className = '', 2000);
+        });
+    };
+    
+    window.toggleTheme = () => {
+        theme = theme === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
+    };
+
+    // --- Matrix ---
+    const cvs = document.getElementById('matrix'), ctx = cvs.getContext('2d');
+    let drops = [];
+    function draw() {
+        if(document.hidden) return requestAnimationFrame(draw);
+        if(window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--matrix-bg');
+        ctx.fillRect(0, 0, cvs.width, cvs.height);
+        ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--matrix-color');
+        ctx.font = "14px monospace";
+        drops.forEach((y, i) => {
+            ctx.fillText("0123456789ABCDEF"[Math.floor(Math.random()*16)], i*20, y*20);
+            if(y*20 > cvs.height && Math.random() > 0.985) drops[i]=0;
+            drops[i]++;
+        });
+        requestAnimationFrame(draw);
+    }
+    window.onresize = () => { cvs.width = window.innerWidth; cvs.height = window.innerHeight; drops = Array(Math.floor(cvs.width/20)).fill(1); };
+
+    // --- Init ---
+    document.documentElement.setAttribute('data-theme', theme);
+    const params = new URLSearchParams(window.location.search);
+    if(params.has('pfx')) ui.pfx.value = params.get('pfx');
+    if(params.has('txt')) ui.inp.value = params.get('txt');
+    if(params.has('c')) ui.mode.checked = true;
+    [ui.pfx, ui.inp].forEach(e => e.addEventListener('input', render));
+    ui.mode.addEventListener('change', render);
+    document.addEventListener('keydown', (e) => {
+        if(e.key === '/') { e.preventDefault(); ui.inp.focus(); }
+        if(e.key === 'Escape') { ui.inp.value = ''; render(); }
+        if(e.key === 'm') ui.mode.click();
+    });
+    window.onresize(); draw(); render();
+</script>
+</body>
+</html>
