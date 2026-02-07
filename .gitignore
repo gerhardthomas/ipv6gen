@@ -1,0 +1,8 @@
+*.bak
+*.bak-*
+*.bak.*
+*.old
+.DS_Store
+node_modules/
+dist/
+.env
